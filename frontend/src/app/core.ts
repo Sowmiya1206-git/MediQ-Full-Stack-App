@@ -3,7 +3,7 @@ import { HttpClient, HttpInterceptorFn } from '@angular/common/http';
 import { CanActivateFn, Router } from '@angular/router';
 import { tap } from 'rxjs';
 
-export const API = 'http://localhost:8080/api';
+export const API = 'https://mediq-backend-b4j1.onrender.com/api';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
