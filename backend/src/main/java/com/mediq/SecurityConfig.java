@@ -1,3 +1,4 @@
+
 package com.mediq;
 
 import jakarta.servlet.FilterChain;
@@ -34,6 +35,9 @@ import java.io.IOException;
 import java.util.List;
 
 
+/**
+ * JWT Authentication Filter
+ */
 @Component
 class JwtFilter extends OncePerRequestFilter {
 
@@ -95,68 +99,90 @@ class JwtFilter extends OncePerRequestFilter {
 }
 
 
+/**
+ * Spring Security Configuration
+ */
 @Configuration
 public class SecurityConfig {
 
+    /**
+     * Password Encoder
+     */
     @Bean
     PasswordEncoder encoder() {
         return new BCryptPasswordEncoder();
     }
 
 
+    /**
+     * Security Filter Chain
+     */
     @Bean
     SecurityFilterChain chain(
             HttpSecurity http,
             JwtFilter f) throws Exception {
 
         http
+                // Disable CSRF for REST API
                 .csrf(c -> c.disable())
 
+                // Enable CORS configuration
                 .cors(c -> c.configurationSource(cors()))
 
+                // Allow H2 console frames
                 .headers(h ->
                         h.frameOptions(o -> o.sameOrigin())
                 )
 
+                // Stateless JWT authentication
                 .sessionManagement(s ->
                         s.sessionCreationPolicy(
                                 SessionCreationPolicy.STATELESS
                         )
                 )
 
+                // Authorization rules
                 .authorizeHttpRequests(a -> a
 
+                        // Allow browser CORS preflight requests
                         .requestMatchers(
                                 HttpMethod.OPTIONS,
                                 "/**"
                         ).permitAll()
 
+                        // Public endpoints
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/api/public/**",
                                 "/h2-console/**"
                         ).permitAll()
 
+                        // Admin endpoints
                         .requestMatchers(
                                 "/api/admin/**"
                         ).hasRole("ADMIN")
 
+                        // Doctor endpoints
                         .requestMatchers(
                                 "/api/doctor/**"
                         ).hasRole("DOCTOR")
 
+                        // Patient endpoints
                         .requestMatchers(
                                 "/api/patient/**"
                         ).hasRole("PATIENT")
 
+                        // All remaining endpoints require authentication
                         .anyRequest().authenticated()
                 )
 
+                // Authentication and authorization error handling
                 .exceptionHandling(e ->
                         e
                                 .authenticationEntryPoint((q, r, ex) -> {
                                     r.setStatus(401);
                                     r.setContentType("application/json");
+
                                     r.getWriter().write(
                                             "{\"message\":\"Authentication required\"}"
                                     );
@@ -165,12 +191,14 @@ public class SecurityConfig {
                                 .accessDeniedHandler((q, r, ex) -> {
                                     r.setStatus(403);
                                     r.setContentType("application/json");
+
                                     r.getWriter().write(
                                             "{\"message\":\"Access denied\"}"
                                     );
                                 })
                 )
 
+                // Add JWT filter
                 .addFilterBefore(
                         f,
                         UsernamePasswordAuthenticationFilter.class
@@ -180,15 +208,23 @@ public class SecurityConfig {
     }
 
 
+    /**
+     * CORS Configuration
+     */
     @Bean
     CorsConfigurationSource cors() {
 
         CorsConfiguration c = new CorsConfiguration();
 
+        // Allowed frontend origins
         c.setAllowedOrigins(
-                List.of("http://localhost:4200")
+                List.of(
+                        "http://localhost:4200",
+                        "https://med-i-q-full-stack-app.vercel.app"
+                )
         );
 
+        // Allowed HTTP methods
         c.setAllowedMethods(
                 List.of(
                         "GET",
@@ -199,12 +235,15 @@ public class SecurityConfig {
                 )
         );
 
+        // Allow request headers, including Authorization
         c.setAllowedHeaders(
                 List.of("*")
         );
 
+        // Allow credentials
         c.setAllowCredentials(true);
 
+        // Register CORS configuration for all API routes
         UrlBasedCorsConfigurationSource source =
                 new UrlBasedCorsConfigurationSource();
 
